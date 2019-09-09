@@ -1,6 +1,7 @@
 import numpy as np
 import copy
 from scipy.integrate import odeint
+from collections import namedtuple
 
 
 class MaxLikelihood:
@@ -52,9 +53,8 @@ class MaxLikelihood:
     def calc_P(self, P, t):
         return self.F * P + P * self.F + self.Gamma * self.Q * self.Gamma
 
-    def eq_for_p(self, t, x0):
-        "TODO сделать t именнованным кортежем"
-        t = np.linspace(t[0], t[1], 10)
+    def eq_for_p(self, time_step, x0):
+        t = np.linspace(time_step.start, time_step.end, 10)
         x = odeint(self.calc_P, x0, t)
         x = np.array(x).flatten()
         return x[len(x) - 1]
@@ -62,19 +62,20 @@ class MaxLikelihood:
     def _dxdt(self, x, t, tetha_1, tetha_2, u):
         return tetha_1 * x[0] + u * tetha_2
 
-    def eq_for_x(self, t, x, u, estimated_values):
-        t_a = np.linspace(t[0], t[1], 10)
+    def eq_for_x(self, time_step, x, u, estimated_values):
+        t_tk = np.linspace(time_step.start, time_step.end, 10)
         x0 = x
-        x = odeint(self._dxdt, [x0], t_a, args=(estimated_values[0], estimated_values[1], u))
+        x = odeint(self._dxdt, x0, t_tk, args=(estimated_values[0], estimated_values[1], u))
         x = np.array(x).flatten()
         return x[len(x) - 1]
 
     def estimate(self, params):
         x_tk = self.x_0
         p_tk = self._P
+        TimeStep = namedtuple('TimeStep', ['start', 'end'])
         result = self.N * np.log(2 * np.pi)
         for i in range(self.N):
-            step = self.t[i:i+2]
+            step = TimeStep(self.t[i], self.t[i + 1])
             x = self.eq_for_x(step, x_tk, self.u[i], params)
             p = self.eq_for_p(step, p_tk)
             e_tk = self._y[i] - self.H * x
