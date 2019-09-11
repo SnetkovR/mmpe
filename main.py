@@ -6,7 +6,9 @@ from collections import namedtuple
 
 
 def noise(sigma, N):
-    return [np.random.normal(0, np.sqrt(sigma)) for i in range(N)]
+    mean = np.zeros(sigma.shape[0])
+    return [np.random.multivariate_normal(mean, np.sqrt(sigma)) for i in range(N)]
+
 
 def one_dim():
     TimeStep = namedtuple('TimeStep', ['start', 'end'])
@@ -15,7 +17,7 @@ def one_dim():
     u = copy.copy(t)
     estimator = MaxLikelihood(Q=0.1, R=0.3, P=0.1,
                               x_0=0, F=tetha[0], H=1, Gamma=1,
-                              t=t, nu=1, u=u, N=10, a=tetha[1])
+                              t=t, nu=1, u=u, N=10, phi=1)
 
     x_array = []
     x1 = np.random.normal(estimator.x0, np.sqrt(estimator.p0))
@@ -31,3 +33,40 @@ def one_dim():
 
     new_array = minimize(estimator.estimate, [-2, 2], method='SLSQP', bounds=[[-3, -0.5], [0.5, 3]])
     print(new_array)
+
+
+def two_dim():
+    TimeStep = namedtuple('TimeStep', ['start', 'end'])
+    tetha = [1, -1]
+    t = list(range(11))
+    u = [1] * 10
+    estimator = MaxLikelihood(Q=0.1*np.eye(2),
+                              R=0.3*np.eye(2),
+                              P=np.array([[0.05, 0], [0, 0.05]]),
+                              x_0=np.array([-5, 0]),
+                              F=np.array([[0, 1], [-tetha[0], tetha[1]]]),
+                              H=np.eye(2),
+                              Gamma=np.eye(2),
+                              t=t,
+                              nu=1,
+                              u=u,
+                              N=10,
+                              phi=np.array([[0], [tetha[1]]]))
+
+    x_array = []
+    x1 = np.random.multivariate_normal(estimator.x0, np.sqrt(estimator.p0))
+    for i in range(len(t) - 1):
+        step = TimeStep(t[i], t[i + 1])
+        x_array.append(estimator.eq_for_x(step, x1, u[i], tetha))
+        x1 = x_array[i]
+    print(x_array)
+    x_noisy_array = x_array + noise(estimator.Q,  len(x_array))
+
+    y_array = [estimator.H @ x for x in x_noisy_array]
+    y_array += noise(estimator.R, len(x_array))
+    estimator.y = y_array
+
+    new_array = minimize(estimator.estimate, [2, -2], method='SLSQP', bounds=[[0.5, 3], [-3, -0.5]])
+    print(new_array)
+
+two_dim()
