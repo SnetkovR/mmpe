@@ -76,7 +76,7 @@ class MaxLikelihood:
     def eq_for_p(self, time_step, x0):
         t = np.linspace(time_step.start, time_step.end, 10)
         x = odeint(self.calc_P, np.diag(x0), t)
-        return np.diagflat([x[:, i][-1] - (x[:, i][0]) for i in range(len(x0))])
+        return np.diagflat([x[:, i][-1] for i in range(len(x0))])
 
     def eq_for_x(self, time_step, x, u, estimated_values):
         t_tk = np.linspace(time_step.start, time_step.end, 31)
